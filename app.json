@@ -9,7 +9,8 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.laurensiusdanir.logiclabmobiletesting"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,13 +20,20 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.laurensiusdanir.logiclabmobiletesting"
     },
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.424039843806-71gaim4tsm3g7pf93jmjahsb2rjai2q9"
+        }
+      ],
       "expo-router",
       [
         "expo-splash-screen",
@@ -43,6 +51,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0bd85d19-6f26-4045-90f7-3fc68f4dc6eb"
+      }
     }
   }
 }
