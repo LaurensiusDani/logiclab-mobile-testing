@@ -10,7 +10,12 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.laurensiusdanir.logiclabmobiletesting"
+      "bundleIdentifier": "com.laurensiusdanir.logiclabmobiletesting",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app requires camera access to scan QR codes and capture images.",
+        "NSPhotoLibraryUsageDescription": "This app requires photo library access to select and upload images.",
+        "NSLocationWhenInUseUsageDescription": "This app requires location access to provide location-based features."
+      }
     },
     "android": {
       "adaptiveIcon": {

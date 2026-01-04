@@ -81,14 +81,24 @@ To make the app work, you need to set up your own backend services.
     *   **iOS Client ID:** Used for the mobile app.
 4.  Copy these Client IDs.
 
-### 3. Update Code Configuration
+### 3. Environment Variables Setup
 
-**File: `lib/supabase.ts`**
-Replace the URL and Key with your Supabase project details:
-```typescript
-const supabaseUrl = "YOUR_SUPABASE_URL";
-const supabaseAnonKey = "YOUR_SUPABASE_ANON_KEY";
-```
+**IMPORTANT:** Never commit your `.env` file to version control!
+
+1.  **Copy the example environment file:**
+    ```bash
+    cp .env.example .env
+    ```
+
+2.  **Edit `.env` and add your Supabase credentials:**
+    ```
+    EXPO_PUBLIC_SUPABASE_URL=your_supabase_url_here
+    EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+    ```
+    
+3.  Get these values from your [Supabase Dashboard](https://app.supabase.com) → Project Settings → API
+
+The `lib/supabase.ts` file will automatically read these environment variables. Never hardcode credentials in your source code!
 
 ## 📱 Running the App
 Since this app uses Native Google Sign-In, it is recommended to run it using a Development Build.
@@ -109,6 +119,56 @@ npx expo start --dev-client
 
 3. Scan the QR code with your device to connect.
 
+## 🧪 Testing
+
+This project uses Jest and React Native Testing Library for unit and integration testing.
+
+### Running Tests
+
+```bash
+# Run all tests once
+npm test
+
+# Run tests in watch mode (re-runs on file changes)
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+```
+
+### Writing Tests
+
+- Tests are located in the `__tests__` directory
+- See `__tests__/example.test.tsx` for examples
+- Mock Supabase and Expo modules as shown in `jest.setup.js`
+
+For more testing guidelines, see [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+## 🏗️ Building for Production
+
+### Using EAS Build
+
+```bash
+# Install EAS CLI (if not installed)
+npm install -g eas-cli
+
+# Login to your Expo account
+eas login
+
+# Build for Android (AAB for Play Store)
+eas build --profile production --platform android
+
+# Build for iOS
+eas build --profile production --platform ios
+```
+
+**Note:** Production builds for Android now use AAB (App Bundle) format, which is required for Google Play Store submission.
+
+For preview/testing builds (APK format):
+```bash
+eas build --profile preview --platform android
+```
+
 ## 📂 Project Structure
 
 ```bash
@@ -126,5 +186,20 @@ logiclab-mobile/
 └── assets/                 # Images and fonts
 ```
 
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](./CONTRIBUTING.md) for details on:
+- Setting up your development environment
+- Code style and conventions
+- Testing requirements
+- Pull request process
+
 ## 📄 License
-Distributed under the MIT License.
+
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with [Expo](https://expo.dev/) and [React Native](https://reactnative.dev/)
+- Backend powered by [Supabase](https://supabase.com/)
+- Designed for ITB students

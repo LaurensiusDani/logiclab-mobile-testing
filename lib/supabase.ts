@@ -17,11 +17,8 @@ const ExpoSecureStoreAdapter = {
 };
 
 // 2. Initialize Supabase
-// REPLACE THESE WITH YOUR ACTUAL KEYS FROM SUPABASE DASHBOARD -> SETTINGS -> API
-// const supabaseUrl = "YOUR_SUPABASE_URL";
-// const supabaseAnonKey = "YOUR_SUPABASE_ANON_KEY";
 const supabaseUrl = "https://hwffsiodhfwsmuvorvaz.supabase.co";
-const supabaseAnonKey = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3ZmZzaW9kaGZ3c211dm9ydmF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0MjQ2NzYsImV4cCI6MjA4MzAwMDY3Nn0.nT0heKOs2eYQicFgYRGz3cA7QiV9asolD4Qz1bkrVps';
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3ZmZzaW9kaGZ3c211dm9ydmF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0MjQ2NzYsImV4cCI6MjA4MzAwMDY3Nn0.nT0heKOs2eYQicFgYRGz3cA7QiV9asolD4Qz1bkrVps";
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
