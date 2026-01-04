@@ -120,7 +120,7 @@ logiclab-mobile/
 │   ├── index.tsx           # Landing page
 │   └── login.tsx           # Login page
 ├── components/             # Reusable UI components (AnimatedSplash, etc.)
-├── constants/              # Static data (Challenges JSON)
+├── data/                   # Static data (Challenges JSON)
 ├── ctx/                    # React Context (AuthContext)
 ├── lib/                    # Configuration (Supabase client)
 └── assets/                 # Images and fonts
