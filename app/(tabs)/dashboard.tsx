@@ -1,9 +1,13 @@
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Button } from "react-native";
+import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from "react-native";
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../../lib/supabase";
 import { useSession } from "../../ctx/AuthContext";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
-import { challenges } from "../../data/challenges"; // Pastikan file ini sudah dibuat ya!
+import { challenges } from "../../data/challenges";
+import { Colors, Typography, Spacing, BorderRadius, Shadows } from "../../lib/theme";
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Ionicons } from "@expo/vector-icons";
 
 export default function Dashboard() {
   const { user } = useSession();
@@ -20,7 +24,6 @@ export default function Dashboard() {
   const fetchProgress = async () => {
     setLoading(true);
     try {
-      // Ambil data progress user dari Supabase
       const { data, error } = await supabase
         .from('user_progress')
         .select('score, challenge_id')
@@ -28,22 +31,16 @@ export default function Dashboard() {
 
       if (error) throw error;
 
-      // Hitung Statistik
       let currentScore = 0;
       let completed = 0;
-      
-      // Hitung total poin yang MUNGKIN didapat dari semua soal yang ada di JSON
       const maxPoints = challenges.reduce((acc, curr) => acc + curr.totalPoints, 0);
-
-      // Map completed IDs to actual challenge objects for display
       const doneList: any[] = [];
 
       if (data) {
         data.forEach(item => {
           currentScore += item.score;
           completed += 1;
-          
-          // Find the challenge details
+
           const challengeDetails = challenges.find(c => c.id === item.challenge_id);
           if (challengeDetails) {
             doneList.push({ ...challengeDetails, myScore: item.score });
@@ -59,7 +56,7 @@ export default function Dashboard() {
         averageScore: completed > 0 ? Math.round(currentScore / completed) : 0
       });
 
-      setCompletedList(doneList); // Save list for display
+      setCompletedList(doneList);
 
     } catch (e) {
       console.error(e);
@@ -68,12 +65,10 @@ export default function Dashboard() {
     }
   };
 
-  // Panggil saat pertama kali load
   useEffect(() => {
     fetchProgress();
   }, []);
 
-  // Fitur Pull-to-Refresh
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -81,97 +76,288 @@ export default function Dashboard() {
     setRefreshing(false);
   }, []);
 
-  // Fungsi Logout
   const handleLogout = async () => {
     try {
-      // 1. Sign out from Supabase
       await supabase.auth.signOut();
-      // 2. Sign out from Google (agar user bisa pilih akun lain nanti)
       await GoogleSignin.signOut();
     } catch (error) {
       console.error("Error signing out:", error);
     }
   };
 
+  const progressPercentage = stats.maxPossibleScore > 0
+    ? (stats.totalScore / stats.maxPossibleScore) * 100
+    : 0;
+
   return (
-    <ScrollView 
+    <ScrollView
       contentContainerStyle={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
-      <Text style={styles.header}>Dashboard</Text>
-      <Text style={styles.subHeader}>Welcome back, {user?.email?.split('@')[0]}</Text>
+      <Animated.View entering={FadeInDown.duration(600)}>
+        <Text style={styles.header}>Dashboard</Text>
+        <Text style={styles.subHeader}>Welcome back, {user?.email?.split('@')[0]}</Text>
+      </Animated.View>
 
-      {/* Score Card */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Total Score</Text>
-        <Text style={styles.bigNumber}>
-          {stats.totalScore} <Text style={styles.smallText}>of {stats.maxPossibleScore}</Text>
-        </Text>
-        <View style={styles.progressBarBg}>
-          <View style={[styles.progressBarFill, { width: `${stats.maxPossibleScore > 0 ? (stats.totalScore / stats.maxPossibleScore) * 100 : 0}%` }]} />
-        </View>
-      </View>
+      {/* Score Card with Gradient */}
+      <Animated.View entering={FadeInDown.duration(600).delay(200)}>
+        <LinearGradient
+          colors={['#667eea', '#764ba2']}
+          style={styles.gradientCard}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <Text style={styles.gradientCardTitle}>Total Score</Text>
+          <Text style={styles.gradientBigNumber}>
+            {stats.totalScore} <Text style={styles.gradientSmallText}>of {stats.maxPossibleScore}</Text>
+          </Text>
+          <View style={styles.progressBarBg}>
+            <Animated.View
+              style={[styles.progressBarFill, { width: `${progressPercentage}%` }]}
+            />
+          </View>
+        </LinearGradient>
+      </Animated.View>
 
       <View style={styles.row}>
         {/* Completed Card */}
-        <View style={[styles.card, styles.halfCard]}>
-          <Text style={styles.cardTitle}>Completed</Text>
-          <Text style={styles.mediumNumber}>{stats.completedCount} / {stats.totalChallenges}</Text>
-          <Text style={styles.label}>Challenges</Text>
-        </View>
+        <Animated.View
+          entering={FadeInDown.duration(600).delay(400)}
+          style={styles.halfCard}
+        >
+          <View style={styles.card}>
+            <View style={styles.iconCircle}>
+              <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
+            </View>
+            <Text style={styles.cardTitle}>Completed</Text>
+            <Text style={styles.mediumNumber}>{stats.completedCount} / {stats.totalChallenges}</Text>
+            <Text style={styles.label}>Challenges</Text>
+          </View>
+        </Animated.View>
 
         {/* Average Card */}
-        <View style={[styles.card, styles.halfCard]}>
-          <Text style={styles.cardTitle}>Avg. Score</Text>
-          <Text style={styles.mediumNumber}>{stats.averageScore}</Text>
-          <Text style={styles.label}>Points</Text>
-        </View>
+        <Animated.View
+          entering={FadeInDown.duration(600).delay(500)}
+          style={styles.halfCard}
+        >
+          <View style={styles.card}>
+            <View style={styles.iconCircle}>
+              <Ionicons name="trophy" size={24} color={Colors.warning} />
+            </View>
+            <Text style={styles.cardTitle}>Avg. Score</Text>
+            <Text style={styles.mediumNumber}>{stats.averageScore}</Text>
+            <Text style={styles.label}>Points</Text>
+          </View>
+        </Animated.View>
       </View>
 
       {/* Recent Activity Section */}
-      <Text style={[styles.subHeader, { marginTop: 20, marginBottom: 10 }]}>Completed Challenges</Text>
-      {completedList.length === 0 ? (
-        <Text style={{ color: '#999', fontStyle: 'italic' }}>No challenges completed yet.</Text>
-      ) : (
-        completedList.map((item) => (
-          <View key={item.id} style={styles.historyItem}>
-            <View>
-              <Text style={styles.historyTitle}>{item.title}</Text>
-              <Text style={styles.historyDate}>{item.category}</Text>
-            </View>
-            <View style={styles.scoreBadge}>
-              <Text style={styles.scoreText}>{item.myScore} pts</Text>
-            </View>
+      <Animated.View entering={FadeInDown.duration(600).delay(600)}>
+        <Text style={[styles.subHeader, { marginTop: Spacing.lg, marginBottom: Spacing.md }]}>
+          Completed Challenges
+        </Text>
+        {completedList.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="clipboard-outline" size={48} color={Colors.gray300} />
+            <Text style={styles.emptyText}>No challenges completed yet.</Text>
+            <Text style={styles.emptySubtext}>Start your journey now!</Text>
           </View>
-        ))
-      )}
+        ) : (
+          completedList.map((item, index) => (
+            <Animated.View
+              key={item.id}
+              entering={FadeInDown.duration(400).delay(700 + index * 100)}
+            >
+              <View style={styles.historyItem}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.historyTitle}>{item.title}</Text>
+                  <Text style={styles.historyDate}>{item.category}</Text>
+                </View>
+                <View style={styles.scoreBadge}>
+                  <Text style={styles.scoreText}>{item.myScore} pts</Text>
+                </View>
+              </View>
+            </Animated.View>
+          ))
+        )}
+      </Animated.View>
 
-      {/* Logout Button Section */}
-      <View style={styles.logoutContainer}>
-        <Button title="Sign Out" onPress={handleLogout} color="#FF3B30" />
-      </View>
+      {/* Logout Button */}
+      <Animated.View
+        entering={FadeInDown.duration(600).delay(800)}
+        style={styles.logoutContainer}
+      >
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogout}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="log-out-outline" size={20} color={Colors.white} />
+          <Text style={styles.logoutText}>Sign Out</Text>
+        </TouchableOpacity>
+      </Animated.View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, paddingTop: 60, backgroundColor: '#f5f5f5', flexGrow: 1 },
-  header: { fontSize: 32, fontWeight: 'bold', color: '#333' },
-  subHeader: { fontSize: 16, color: '#666', marginBottom: 20 },
-  card: { backgroundColor: 'white', padding: 20, borderRadius: 16, marginBottom: 15, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
-  cardTitle: { fontSize: 14, color: '#888', fontWeight: '600', marginBottom: 5 },
-  bigNumber: { fontSize: 36, fontWeight: 'bold', color: '#007AFF' },
-  mediumNumber: { fontSize: 28, fontWeight: 'bold', color: '#333' },
-  smallText: { fontSize: 16, color: '#999', fontWeight: 'normal' },
-  label: { fontSize: 12, color: '#999' },
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
-  halfCard: { width: '48%' },
-  progressBarBg: { height: 8, backgroundColor: '#E0E0E0', borderRadius: 4, marginTop: 10 },
-  progressBarFill: { height: 8, backgroundColor: '#007AFF', borderRadius: 4 },
-  logoutContainer: { marginTop: 30, marginBottom: 20 },
-  historyItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 10 },
-  historyTitle: { fontWeight: 'bold', color: '#333', fontSize: 14 },
-  historyDate: { color: '#999', fontSize: 12 },
-  scoreBadge: { backgroundColor: '#E6F4FE', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
-  scoreText: { color: '#007AFF', fontWeight: 'bold', fontSize: 12 },
+  container: {
+    padding: Spacing.xl,
+    paddingTop: Spacing['5xl'],
+    backgroundColor: Colors.background,
+    flexGrow: 1
+  },
+  header: {
+    fontSize: Typography.fontSize['4xl'],
+    fontWeight: Typography.fontWeight.extrabold,
+    color: Colors.text
+  },
+  subHeader: {
+    fontSize: Typography.fontSize.base,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.lg,
+    marginTop: Spacing.xs,
+  },
+  gradientCard: {
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.base,
+    ...Shadows.lg,
+  },
+  gradientCardTitle: {
+    fontSize: Typography.fontSize.sm,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: Typography.fontWeight.semibold,
+    marginBottom: Spacing.xs,
+  },
+  gradientBigNumber: {
+    fontSize: Typography.fontSize['5xl'],
+    fontWeight: Typography.fontWeight.extrabold,
+    color: Colors.white,
+  },
+  gradientSmallText: {
+    fontSize: Typography.fontSize.lg,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: Typography.fontWeight.normal,
+  },
+  card: {
+    backgroundColor: Colors.card,
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    ...Shadows.md,
+    alignItems: 'center',
+  },
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.gray50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  cardTitle: {
+    fontSize: Typography.fontSize.sm,
+    color: Colors.textSecondary,
+    fontWeight: Typography.fontWeight.semibold,
+    marginBottom: Spacing.xs,
+  },
+  mediumNumber: {
+    fontSize: Typography.fontSize['3xl'],
+    fontWeight: Typography.fontWeight.bold,
+    color: Colors.text,
+  },
+  label: {
+    fontSize: Typography.fontSize.xs,
+    color: Colors.textTertiary,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: Spacing.base,
+  },
+  halfCard: {
+    flex: 1,
+  },
+  progressBarBg: {
+    height: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: BorderRadius.sm,
+    marginTop: Spacing.md,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: 6,
+    backgroundColor: Colors.white,
+    borderRadius: BorderRadius.sm,
+  },
+  emptyState: {
+    backgroundColor: Colors.card,
+    padding: Spacing['3xl'],
+    borderRadius: BorderRadius.lg,
+    alignItems: 'center',
+    ...Shadows.sm,
+  },
+  emptyText: {
+    fontSize: Typography.fontSize.base,
+    color: Colors.textSecondary,
+    marginTop: Spacing.md,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  emptySubtext: {
+    fontSize: Typography.fontSize.sm,
+    color: Colors.textTertiary,
+    marginTop: Spacing.xs,
+  },
+  historyItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: Colors.card,
+    padding: Spacing.base,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.md,
+    ...Shadows.sm,
+  },
+  historyTitle: {
+    fontWeight: Typography.fontWeight.bold,
+    color: Colors.text,
+    fontSize: Typography.fontSize.base,
+  },
+  historyDate: {
+    color: Colors.textSecondary,
+    fontSize: Typography.fontSize.xs,
+    marginTop: 2,
+  },
+  scoreBadge: {
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+  },
+  scoreText: {
+    color: Colors.primary,
+    fontWeight: Typography.fontWeight.bold,
+    fontSize: Typography.fontSize.sm,
+  },
+  logoutContainer: {
+    marginTop: Spacing['2xl'],
+    marginBottom: Spacing.lg,
+  },
+  logoutButton: {
+    backgroundColor: Colors.danger,
+    paddingVertical: Spacing.base,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    ...Shadows.md,
+  },
+  logoutText: {
+    color: Colors.white,
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+  },
 });
