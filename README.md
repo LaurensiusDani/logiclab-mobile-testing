@@ -6,6 +6,17 @@ The app features secure authentication (restricted to ITB student emails), real-
 
 ---
 
+## 🎮 Demo & Download
+
+Experience the **Universal App** capabilities of LogicLab right now!
+
+| Platform | Link | Description |
+| :--- | :--- | :--- |
+| **🌐 Web App** | [**Launch in Browser**](https://logiclab-mobile-testing--1ys2qqqe91.expo.app/) | No installation required. Works on Chrome, Safari, & Edge. |
+| **🤖 Android** | [**Download APK**](https://drive.google.com/file/d/1EZkUHFVlUXTJFvxr1yY6j0yFopq4lCy4/view?usp=sharing) | Direct download. Note: You may need to allow installation from unknown sources. |
+
+---
+
 ## ✨ Features
 
 ### 1. 🔐 Secure Authentication

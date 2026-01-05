@@ -1,5 +1,6 @@
-import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert } from "react-native";
+import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert, Platform } from "react-native";
 import { useEffect, useState, useCallback } from "react";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import { useSession } from "../../ctx/AuthContext";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
@@ -76,9 +77,12 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => {
-    fetchProgress();
-  }, []);
+  // REPLACE useEffect with useFocusEffect
+  useFocusEffect(
+    useCallback(() => {
+      fetchProgress();
+    }, [user])
+  );
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -89,10 +93,24 @@ export default function Dashboard() {
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
-      await GoogleSignin.signOut();
+      // 1. Sign out from Supabase (Works on both Web & Mobile)
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      // 2. Sign out from Google (Only needed on Native Mobile)
+      if (Platform.OS !== 'web') {
+        await GoogleSignin.signOut();
+      }
+      
+      // // On Web, Supabase auth state change will automatically trigger the redirect in _layout.tsx
+      // // But just to be safe/explicit on web:
+      // if (Platform.OS === 'web') {
+      //   window.location.reload(); // Optional: Force reload to clear any stuck states
+      // }
+
     } catch (error) {
       console.error("Error signing out:", error);
+      Alert.alert("Error", "Failed to sign out");
     }
   };
 

@@ -1,5 +1,5 @@
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, Alert } from "react-native";
-import { useRouter } from "expo-router";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, Alert, Platform } from "react-native";
+import { useRouter, useFocusEffect } from "expo-router";
 import { challenges } from "../../data/challenges";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState, useCallback } from "react";
@@ -50,9 +50,11 @@ export default function ChallengesScreen() {
     }
   };
 
-  useEffect(() => {
-    fetchProgress();
-  }, [user]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchProgress();
+    }, [user])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

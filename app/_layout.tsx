@@ -1,24 +1,30 @@
 import { Slot, useRouter, useSegments } from "expo-router";
 import { AuthProvider, useSession } from "../ctx/AuthContext";
 import { useEffect, useState } from "react";
-import { View, ActivityIndicator } from "react-native";
-import AnimatedSplash from "../components/AnimatedSplash"; // Import komponen baru
+import { View, ActivityIndicator, Platform } from "react-native"; // Added Platform
+import AnimatedSplash from "../components/AnimatedSplash"; 
 
 function RootLayoutNav() {
   const { session, isLoading } = useSession();
-  // Trik: Kita paksa tipe datanya jadi 'any' dulu biar TypeScript diam
   const segments = useSegments() as any; 
   const router = useRouter();
 
-  // State untuk melacak apakah animasi splash sudah selesai
-  const [isSplashAnimationFinished, setSplashAnimationFinished] = useState(false);
+  // FIX: Initialize state based on the current URL (Web only)
+  // If we are on Web and the path is NOT '/', we skip the animation immediately.
+  const [isSplashAnimationFinished, setSplashAnimationFinished] = useState(() => {
+    if (Platform.OS === 'web') {
+      // window.location.pathname gives us "/dashboard", "/home", etc.
+      return window.location.pathname !== '/';
+    }
+    return false; // On mobile, always play splash on app launch
+  });
+
+  // Determine if we are in a protected route
+  const inProtectedGroup = segments[0] === '(tabs)' || segments[0] === 'quiz';
 
   useEffect(() => {
-    // JANGAN lakukan navigasi kalau loading auth belum beres ATAU animasi belum beres
     if (isLoading || !isSplashAnimationFinished) return;
 
-    // Sekarang aman cek length karena tipenya 'any'
-    const inProtectedGroup = segments[0] === '(tabs)' || segments[0] === 'quiz';
     const inPublicGroup = segments.length === 0 || segments[0] === 'login'; 
 
     if (session && inPublicGroup) {
@@ -26,17 +32,35 @@ function RootLayoutNav() {
     } else if (!session && inProtectedGroup) {
       router.replace('/');
     }
-  }, [session, isLoading, segments]);
+  }, [session, isLoading, segments, isSplashAnimationFinished]);
 
-  // Tampilkan Splash Screen jika Auth masih loading ATAU Animasi belum selesai
+  // 1. Loading State Handling
   if (isLoading || !isSplashAnimationFinished) {
+    
+    // Case A: Animation is still running (or we are on the Index page)
+    if (!isSplashAnimationFinished) {
+      return (
+        <AnimatedSplash 
+          onFinish={() => setSplashAnimationFinished(true)} 
+        />
+      );
+    }
+
+    // Case B: Animation was skipped (e.g. refreshed /dashboard), but Auth is still loading.
+    // Show a simple spinner instead of the full Splash animation.
     return (
-      <AnimatedSplash 
-        onFinish={() => setSplashAnimationFinished(true)} 
-      />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+        <ActivityIndicator size="large" color="#667eea" />
+      </View>
     );
   }
 
+  // 2. SECURITY GUARD
+  if (inProtectedGroup && !session) {
+    return null; 
+  }
+
+  // 3. Render the page
   return <Slot />;
 }
 

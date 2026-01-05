@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Platform } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { challenges } from "../../data/challenges";
@@ -53,7 +53,11 @@ export default function QuizScreen() {
 
   const submitQuiz = async () => {
     if (Object.keys(answers).length < totalQuestions) {
-      Alert.alert("Incomplete", "Please answer all questions before submitting.");
+      if (Platform.OS === 'web') {
+        window.alert("Please answer all questions before submitting.");
+      } else {
+        Alert.alert("Incomplete", "Please answer all questions before submitting.");
+      }
       return;
     }
 
@@ -73,11 +77,16 @@ export default function QuizScreen() {
         }, { onConflict: 'user_id, challenge_id' });
 
       if (error) throw error;
+      
       setQuizCompleted(true);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving progress:", error);
-      Alert.alert("Error", "Failed to save your progress.");
+      if (Platform.OS === 'web') {
+        window.alert("Failed to save progress: " + error.message);
+      } else {
+        Alert.alert("Error", "Failed to save your progress.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -120,7 +129,14 @@ export default function QuizScreen() {
 
           <TouchableOpacity
             style={styles.primaryButton}
-            onPress={() => router.replace('/(tabs)/dashboard')}
+            onPress={() => {
+                // Force navigation on web to ensure dashboard refreshes
+                if (Platform.OS === 'web') {
+                    router.replace('/(tabs)/dashboard');
+                } else {
+                    router.replace('/(tabs)/dashboard');
+                }
+            }}
             activeOpacity={0.8}
           >
             <Ionicons name="stats-chart" size={20} color={Colors.white} />
