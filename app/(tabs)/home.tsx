@@ -3,12 +3,31 @@ import { Colors, Typography, Spacing, BorderRadius, Shadows } from "../../lib/th
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from "@expo/vector-icons";
+import { faculties } from "../../data/faculties"; 
 
-const INSTRUCTORS = [
-  { id: '1', name: 'Dr. Rinaldi Munir', role: 'Algorithm Expert', icon: 'code-slash' },
-  { id: '2', name: 'Dr. Inggriani Liem', role: 'Computational Thinking', icon: 'bulb' },
-  { id: '3', name: 'Pak Dosen X', role: 'Data Structures', icon: 'git-network' },
-];
+// Helper to map Faculty to Ionicon
+const getIconForFaculty = (shortName: string): keyof typeof Ionicons.glyphMap => {
+  switch (shortName) {
+    case 'STEI': return 'hardware-chip';
+    case 'FTI': return 'settings';
+    case 'SITH': return 'leaf';
+    case 'FTMD': return 'airplane';
+    case 'FTSL': return 'construct';
+    case 'FTTM': return 'hammer';
+    default: return 'school';
+  }
+};
+
+// Flatten the data: Extract all lecturers from all faculties
+const INSTRUCTORS = faculties.flatMap(faculty => 
+  faculty.classes.map(cls => ({
+    id: cls.id,
+    name: cls.lecturer,
+    role: cls.name, 
+    faculty: faculty.shortName,
+    icon: getIconForFaculty(faculty.shortName)
+  }))
+);
 
 export default function Home() {
   return (
@@ -34,8 +53,15 @@ export default function Home() {
         entering={FadeInDown.duration(600).delay(200)}
       >
         <Text style={styles.sectionTitle}>About the App</Text>
+        <Image
+          source={require('../../assets/images/Plaza_Widya_Nusantara.jpg')}
+          style={styles.campusImage}
+          resizeMode="cover"
+        />
         <Text style={styles.text}>
           LogicLab is designed specifically for ITB students to sharpen their algorithmic skills through interactive challenges.
+          {'\n'}{'\n'}
+          This virtual lab is part of the TPB (Tahap Persiapan Bersama) ITB course, taken by all first-year students across faculties to build foundational computational thinking skills.
         </Text>
       </Animated.View>
 
@@ -50,6 +76,7 @@ export default function Home() {
           data={INSTRUCTORS}
           showsHorizontalScrollIndicator={false}
           keyExtractor={item => item.id}
+          contentContainerStyle={{ paddingRight: Spacing.xl, paddingBottom: Spacing.lg }}
           renderItem={({ item }) => (
             <Pressable
               style={({ pressed }) => [
@@ -63,37 +90,79 @@ export default function Home() {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <Ionicons name={item.icon as any} size={28} color={Colors.white} />
+                <Ionicons name={item.icon} size={28} color={Colors.white} />
               </LinearGradient>
-              <Text style={styles.instructorName}>{item.name}</Text>
-              <Text style={styles.instructorRole}>{item.role}</Text>
+              <Text style={styles.instructorName} numberOfLines={1}>{item.name}</Text>
+              <Text style={styles.instructorRole} numberOfLines={2}>{item.role}</Text>
+              <Text style={styles.facultyBadge}>{item.faculty}</Text>
             </Pressable>
           )}
         />
       </Animated.View>
 
-      {/* Contact Us */}
+      {/* Contact Us - NEW DESIGN */}
       <Animated.View
         style={[styles.section, { marginBottom: 40 }]}
         entering={FadeInDown.duration(600).delay(600)}
       >
         <Text style={styles.sectionTitle}>Contact Us</Text>
-        <View style={styles.contactCard}>
-          <View style={styles.contactRow}>
-            <Ionicons name="location" size={20} color={Colors.primary} />
-            <Text style={styles.contactText}>Lab Dasar Pemrograman, Labtek V, ITB</Text>
+        <Text style={styles.contactDescription}>
+          Have questions or need help? Reach out to us through the following channels.
+        </Text>
+
+        {/* Email Card */}
+        <View style={styles.contactCardNew}>
+          <View style={[styles.iconCircle, { backgroundColor: '#DBEAFE' }]}>
+            <Ionicons name="mail-outline" size={24} color="#2563EB" />
           </View>
-          <View style={styles.contactRow}>
-            <Ionicons name="mail" size={20} color={Colors.primary} />
-            <Text style={styles.contactText}>itbvirtuallabofficial@gmail.com</Text>
-          </View>
+          <Text style={styles.cardTitle}>Email</Text>
+          <Text style={styles.cardSubtitle}>For general inquiries</Text>
+          <Text style={styles.cardLink}>itbvirtuallabofficial@gmail.com</Text>
         </View>
-        <Image
-          source={require('../../assets/images/Plaza_Widya_Nusantara.jpg')}
-          style={styles.campusImage}
-          resizeMode="cover"
-        />
+
+        {/* Location Card */}
+        <View style={styles.contactCardNew}>
+          <View style={[styles.iconCircle, { backgroundColor: '#DCFCE7' }]}>
+            <Ionicons name="location-outline" size={24} color="#16A34A" />
+          </View>
+          <Text style={styles.cardTitle}>Location</Text>
+          <Text style={styles.cardSubtitle}>Visit us at</Text>
+          <Text style={styles.cardContent}>
+            Institut Teknologi Bandung{'\n'}
+            Jl. Ganesha No. 10{'\n'}
+            Bandung 40132, Indonesia
+          </Text>
+        </View>
+
+        {/* Office Hours Card */}
+        <View style={styles.contactCardNew}>
+          <View style={[styles.iconCircle, { backgroundColor: '#F3E8FF' }]}>
+            <Ionicons name="time-outline" size={24} color="#9333EA" />
+          </View>
+          <Text style={styles.cardTitle}>Office Hours</Text>
+          <Text style={styles.cardSubtitle}>Available during</Text>
+          <Text style={styles.cardContent}>
+            Monday - Friday{'\n'}
+            08:00 - 17:00 WIB{'\n'}
+            (Closed on weekends)
+          </Text>
+        </View>
       </Animated.View>
+
+      {/* Footer */}
+        <View style={styles.footer}>
+          <View style={styles.footerHeader}>
+            <Ionicons name="school-outline" size={28} color={Colors.white} />
+            <View style={{ alignItems: 'center' }}>
+              <Text style={styles.footerTitle}>Virtual Lab: Computational Thinking</Text>
+              <Text style={styles.footerTitle}>ITB</Text>
+            </View>
+          </View>
+            
+          <Text style={styles.footerCopyright}>
+            © 2025 Institut Teknologi Bandung. All rights reserved.
+          </Text>
+        </View>
     </ScrollView>
   );
 }
@@ -110,6 +179,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   heroTitle: {
+    textAlign: 'center',
     fontSize: Typography.fontSize['5xl'],
     fontWeight: Typography.fontWeight.extrabold,
     color: Colors.white,
@@ -125,18 +195,21 @@ const styles = StyleSheet.create({
     lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.lg,
   },
   section: {
-    padding: Spacing.xl
+    padding: Spacing.xl,
+    paddingRight: 0, 
   },
   sectionTitle: {
     fontSize: Typography.fontSize['2xl'],
     fontWeight: Typography.fontWeight.bold,
     marginBottom: Spacing.base,
     color: Colors.text,
+    paddingRight: Spacing.xl, 
   },
   text: {
     fontSize: Typography.fontSize.base,
     color: Colors.textSecondary,
     lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.base,
+    paddingRight: Spacing.xl, 
   },
   instructorCard: {
     width: 160,
@@ -146,12 +219,14 @@ const styles = StyleSheet.create({
     marginRight: Spacing.base,
     alignItems: 'center',
     ...Shadows.md,
+    height: 200, 
+    justifyContent: 'space-between'
   },
   avatarGradient: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    marginBottom: Spacing.md,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginBottom: Spacing.sm,
     justifyContent: 'center',
     alignItems: 'center',
     ...Shadows.sm,
@@ -168,29 +243,99 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: Typography.lineHeight.tight * Typography.fontSize.xs,
+    marginBottom: Spacing.xs,
+    flex: 1, 
   },
-  contactCard: {
+  facultyBadge: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 4,
+  },
+  
+  // NEW CONTACT STYLES
+  contactDescription: {
+    fontSize: Typography.fontSize.base,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.lg,
+    paddingRight: Spacing.xl,
+    lineHeight: 22,
+  },
+  contactCardNew: {
     backgroundColor: Colors.card,
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+    marginRight: Spacing.xl, // Add margin right to match section padding logic
     ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
   },
-  contactRow: {
-    flexDirection: 'row',
+  iconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.md,
   },
-  contactText: {
-    fontSize: Typography.fontSize.base,
+  cardTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.bold,
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  cardSubtitle: {
+    fontSize: Typography.fontSize.sm,
     color: Colors.textSecondary,
-    marginLeft: Spacing.md,
-    flex: 1,
+    marginBottom: Spacing.md,
+  },
+  cardLink: {
+    fontSize: Typography.fontSize.base,
+    color: '#2563EB',
+    fontWeight: Typography.fontWeight.medium,
+    textAlign: 'center',
+  },
+  cardContent: {
+    fontSize: Typography.fontSize.base,
+    color: Colors.text,
+    textAlign: 'center',
+    lineHeight: 24,
   },
   campusImage: {
-    width: '100%',
+    width: '92%', 
     height: 200,
     borderRadius: BorderRadius.md,
-    marginTop: Spacing.lg,
+    marginBottom: Spacing.md,
     ...Shadows.sm,
+  },
+  // Footer Styles
+  footer: {
+    backgroundColor: '#0F172A', // Dark Navy
+    paddingVertical: Spacing['2xl'],
+    paddingHorizontal: Spacing.xl,
+    alignItems: 'center',
+    marginTop: Spacing.lg,
+  },
+  footerHeader: {
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+    gap: Spacing.sm,
+  },
+  footerTitle: {
+    color: Colors.white,
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.bold,
+    textAlign: 'center',
+  },
+  footerCopyright: {
+    color: '#94A3B8', // Slate 400 (Grayish)
+    fontSize: Typography.fontSize.xs,
+    textAlign: 'center',
   },
 });

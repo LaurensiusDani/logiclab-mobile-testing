@@ -7,7 +7,7 @@ import { useSession } from "../../ctx/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from "../../lib/theme";
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutLeft } from 'react-native-reanimated';
+import Animated, { FadeIn, SlideInRight, SlideOutLeft, FadeInDown } from 'react-native-reanimated';
 
 export default function QuizScreen() {
   const { id } = useLocalSearchParams();
@@ -21,6 +21,8 @@ export default function QuizScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
+  
+  const [isReviewing, setIsReviewing] = useState(false);
 
   if (!challenge) {
     return <View style={styles.center}><Text>Challenge not found</Text></View>;
@@ -30,7 +32,7 @@ export default function QuizScreen() {
   const totalQuestions = challenge.questions.length;
 
   const handleOptionSelect = (optionId: string) => {
-    if (quizCompleted) return;
+    if (quizCompleted) return; 
     setAnswers(prev => ({
       ...prev,
       [currentQuestion.id]: optionId
@@ -81,8 +83,16 @@ export default function QuizScreen() {
     }
   };
 
-  // Result View
-  if (quizCompleted) {
+  const startReview = () => {
+    setIsReviewing(true);
+    setCurrentQuestionIndex(0); 
+  };
+
+  const exitReview = () => {
+    setIsReviewing(false);
+  };
+
+  if (quizCompleted && !isReviewing) {
     const percentage = (finalScore / challenge.totalPoints) * 100;
     return (
       <View style={styles.container}>
@@ -119,11 +129,20 @@ export default function QuizScreen() {
 
           <TouchableOpacity
             style={styles.secondaryButton}
-            onPress={() => router.back()}
+            onPress={startReview}
             activeOpacity={0.8}
           >
-            <Ionicons name="arrow-back" size={20} color={Colors.primary} />
-            <Text style={styles.secondaryButtonText}>Back to Challenges</Text>
+            <Ionicons name="eye" size={20} color={Colors.primary} />
+            <Text style={styles.secondaryButtonText}>Review Answers</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => router.replace('/(tabs)/challenges')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="arrow-back" size={20} color={Colors.textSecondary} />
+            <Text style={[styles.secondaryButtonText, { color: Colors.textSecondary }]}>Back to Challenges</Text>
           </TouchableOpacity>
         </Animated.View>
       </View>
@@ -134,7 +153,12 @@ export default function QuizScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* Progress Bar */}
+      {isReviewing && (
+        <View style={styles.reviewHeader}>
+          <Text style={styles.reviewHeaderText}>Review Mode</Text>
+        </View>
+      )}
+
       <Animated.View entering={FadeIn.duration(400)}>
         <View style={styles.progressContainer}>
           <View style={styles.progressBarBg}>
@@ -148,31 +172,41 @@ export default function QuizScreen() {
         </View>
       </Animated.View>
 
-      {/* Question Navigator Dots */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.navContainer}>
         {challenge.questions.map((q, index) => {
           const isAnswered = !!answers[q.id];
           const isCurrent = index === currentQuestionIndex;
+          
+          // FIX: Use array for styles to merge base + modifier
+          const dotStyles: any[] = [styles.navDot]; 
+
+          if (isReviewing) {
+             const userAnswer = answers[q.id];
+             const isCorrect = q.options.find(o => o.id === userAnswer)?.isCorrect;
+             
+             if (isCurrent) dotStyles.push(styles.navDotCurrent);
+             else if (isCorrect) dotStyles.push(styles.navDotCorrect);
+             else dotStyles.push(styles.navDotWrong);
+          } else {
+             if (isCurrent) dotStyles.push(styles.navDotCurrent);
+             else if (isAnswered) dotStyles.push(styles.navDotAnswered);
+          }
+
           return (
             <TouchableOpacity
               key={q.id}
-              style={[
-                styles.navDot,
-                isCurrent && styles.navDotCurrent,
-                isAnswered && !isCurrent && styles.navDotAnswered
-              ]}
+              style={[dotStyles, { marginRight: Spacing.md }]}
               onPress={() => setCurrentQuestionIndex(index)}
             >
               <Text style={[
                 styles.navText,
-                (isCurrent || isAnswered) && styles.navTextActive
+                (isCurrent || (isReviewing && !isCurrent)) && styles.navTextActive
               ]}>{index + 1}</Text>
             </TouchableOpacity>
           );
         })}
       </ScrollView>
 
-      {/* Question */}
       <Animated.View
         key={currentQuestionIndex}
         entering={SlideInRight.duration(300)}
@@ -181,33 +215,63 @@ export default function QuizScreen() {
         <Text style={styles.questionText}>{currentQuestion.question}</Text>
       </Animated.View>
 
-      {/* Options */}
       {currentQuestion.options.map((option, index) => {
         const isSelected = answers[currentQuestion.id] === option.id;
+        
+        // FIX: Use array for styles
+        const cardStyles: any[] = [styles.optionCard];
+        const textStyles: any[] = [styles.optionText];
+        let icon = null;
+
+        if (isReviewing) {
+          if (option.isCorrect) {
+            cardStyles.push(styles.optionCorrect);
+            textStyles.push(styles.optionTextSelected);
+            icon = <Ionicons name="checkmark-circle" size={24} color={Colors.success} />;
+          } else if (isSelected && !option.isCorrect) {
+            cardStyles.push(styles.optionWrong);
+            textStyles.push(styles.optionTextSelected);
+            // FIX: Colors.error -> Colors.danger
+            icon = <Ionicons name="close-circle" size={24} color={Colors.danger} />; 
+          }
+        } else {
+          if (isSelected) {
+            cardStyles.push(styles.optionSelected);
+            textStyles.push(styles.optionTextSelected);
+            icon = <View style={styles.checkCircle}><Ionicons name="checkmark-circle" size={24} color={Colors.primary} /></View>;
+          }
+        }
+
         return (
           <Animated.View
             key={option.id}
             entering={FadeIn.duration(300).delay(index * 50)}
           >
             <TouchableOpacity
-              style={[styles.optionCard, isSelected && styles.optionSelected]}
+              style={cardStyles}
               onPress={() => handleOptionSelect(option.id)}
               activeOpacity={0.7}
+              disabled={isReviewing}
             >
-              <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
+              <Text style={textStyles}>
                 {option.text}
               </Text>
-              {isSelected && (
-                <View style={styles.checkCircle}>
-                  <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
-                </View>
-              )}
+              {icon}
             </TouchableOpacity>
           </Animated.View>
         );
       })}
 
-      {/* Navigation Buttons */}
+      {isReviewing && currentQuestion.explanation && (
+        <Animated.View entering={FadeInDown.duration(500)} style={styles.explanationBox}>
+          <View style={styles.explanationHeader}>
+            <Ionicons name="bulb" size={20} color="#F59E0B" />
+            <Text style={styles.explanationTitle}>Explanation</Text>
+          </View>
+          <Text style={styles.explanationText}>{currentQuestion.explanation}</Text>
+        </Animated.View>
+      )}
+
       <View style={styles.footerButtons}>
         <TouchableOpacity
           style={[styles.navButton, currentQuestionIndex === 0 && styles.disabledButton]}
@@ -231,21 +295,31 @@ export default function QuizScreen() {
             <Ionicons name="chevron-forward" size={20} color={Colors.text} />
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity
-            style={[styles.navButton, styles.submitButton]}
-            onPress={submitQuiz}
-            disabled={isSubmitting}
-            activeOpacity={0.8}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color={Colors.white} />
-            ) : (
-              <>
-                <Ionicons name="checkmark-done" size={20} color={Colors.white} />
-                <Text style={styles.submitButtonText}>Submit</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          isReviewing ? (
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={exitReview}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.secondaryButtonText}>Back to Results</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.navButton, styles.submitButton]}
+              onPress={submitQuiz}
+              disabled={isSubmitting}
+              activeOpacity={0.8}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color={Colors.white} />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-done" size={20} color={Colors.white} />
+                  <Text style={styles.submitButtonText}>Submit</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )
         )}
       </View>
     </ScrollView>
@@ -264,8 +338,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  // Progress
+  reviewHeader: {
+    marginBottom: Spacing.md,
+    alignItems: 'center',
+  },
+  reviewHeaderText: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.bold,
+    color: Colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
   progressContainer: {
     marginBottom: Spacing.lg,
   },
@@ -287,8 +370,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: Typography.fontWeight.medium,
   },
-
-  // Navigator
   navContainer: {
     flexDirection: 'row',
     marginBottom: Spacing.xl,
@@ -301,14 +382,19 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.gray200,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: Spacing.md,
   },
   navDotCurrent: {
     backgroundColor: Colors.primary,
     ...Shadows.sm,
   },
   navDotAnswered: {
+    backgroundColor: Colors.primaryLight,
+  },
+  navDotCorrect: {
     backgroundColor: Colors.success,
+  },
+  navDotWrong: {
+    backgroundColor: Colors.danger, // FIX: Colors.error -> Colors.danger
   },
   navText: {
     fontSize: Typography.fontSize.sm,
@@ -318,7 +404,6 @@ const styles = StyleSheet.create({
   navTextActive: {
     color: Colors.white,
   },
-
   questionText: {
     fontSize: Typography.fontSize['2xl'],
     fontWeight: Typography.fontWeight.bold,
@@ -326,7 +411,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
     lineHeight: Typography.lineHeight.normal * Typography.fontSize['2xl'],
   },
-
   optionCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -343,6 +427,14 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
     backgroundColor: Colors.primaryLight,
   },
+  optionCorrect: {
+    borderColor: Colors.success,
+    backgroundColor: '#DCFCE7',
+  },
+  optionWrong: {
+    borderColor: Colors.danger, // FIX: Colors.error -> Colors.danger
+    backgroundColor: '#FEE2E2',
+  },
   optionText: {
     fontSize: Typography.fontSize.base,
     color: Colors.text,
@@ -350,13 +442,37 @@ const styles = StyleSheet.create({
     lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.base,
   },
   optionTextSelected: {
-    color: Colors.primary,
+    color: Colors.text,
     fontWeight: Typography.fontWeight.semibold,
   },
   checkCircle: {
     marginLeft: Spacing.md,
   },
-
+  explanationBox: {
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    borderRadius: BorderRadius.md,
+    padding: Spacing.lg,
+    marginTop: Spacing.md,
+  },
+  explanationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+    gap: Spacing.xs,
+  },
+  explanationTitle: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.bold,
+    color: '#B45309',
+    textTransform: 'uppercase',
+  },
+  explanationText: {
+    fontSize: Typography.fontSize.sm,
+    color: '#92400E',
+    lineHeight: 20,
+  },
   footerButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -394,8 +510,6 @@ const styles = StyleSheet.create({
     fontWeight: Typography.fontWeight.bold,
     fontSize: Typography.fontSize.base,
   },
-
-  // Result screen
   resultCard: {
     flex: 1,
     justifyContent: 'center',
@@ -457,6 +571,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     gap: Spacing.sm,
+    marginBottom: Spacing.md,
     borderWidth: 2,
     borderColor: Colors.primary,
   },

@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert } from "react-native";
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../../lib/supabase";
 import { useSession } from "../../ctx/AuthContext";
@@ -21,8 +21,8 @@ export default function Dashboard() {
   });
   const [completedList, setCompletedList] = useState<any[]>([]);
 
-  const fetchProgress = async () => {
-    setLoading(true);
+  const fetchProgress = async (isRefreshing = false) => {
+    if (!isRefreshing) setLoading(true); // Only show full screen loader on first load
     try {
       const { data, error } = await supabase
         .from('user_progress')
@@ -58,8 +58,19 @@ export default function Dashboard() {
 
       setCompletedList(doneList);
 
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+
+      // Check if it's a network error
+      if (e.message && (e.message.includes('Network request failed') || e.message.includes('fetch failed'))) {
+        // If refreshing, alert the user but keep old data
+        if (isRefreshing) {
+          Alert.alert("Offline", "Could not refresh data. Please check your internet connection.");
+        } 
+        // If it's the first load, you might want to show a specific offline UI state here
+      } else {
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }
@@ -72,7 +83,7 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchProgress();
+    await fetchProgress(true);
     setRefreshing(false);
   }, []);
 

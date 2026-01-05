@@ -1,4 +1,4 @@
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { challenges } from "../../data/challenges";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,15 +15,38 @@ export default function ChallengesScreen() {
   const [completedIds, setCompletedIds] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchProgress = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from('user_progress')
-      .select('challenge_id')
-      .eq('user_id', user.id);
+  // Calculate Stats
+  const totalChallenges = challenges.length;
+  const easyCount = challenges.filter(c => c.difficulty === 'Easy').length;
+  const mediumCount = challenges.filter(c => c.difficulty === 'Medium').length;
+  const hardCount = challenges.filter(c => c.difficulty === 'Hard').length;
 
-    if (data) {
-      setCompletedIds(data.map(item => item.challenge_id));
+  const fetchProgress = async (isRefreshing = false) => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_progress')
+        .select('challenge_id')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      if (data) {
+        setCompletedIds(data.map(item => item.challenge_id));
+      }
+    } catch (e: any) {
+      console.error("Fetch error:", e);
+      
+      // Check if it's a network error
+      if (e.message && (e.message.includes('Network request failed') || e.message.includes('fetch failed'))) {
+        // If refreshing, alert the user but keep old data
+        if (isRefreshing) {
+          Alert.alert("Offline", "Could not refresh progress. Please check your internet connection.");
+        }
+      } else {
+        console.error(e);
+      }
     }
   };
 
@@ -33,7 +56,7 @@ export default function ChallengesScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchProgress();
+    await fetchProgress(true);
     setRefreshing(false);
   }, []);
 
@@ -46,15 +69,73 @@ export default function ChallengesScreen() {
     }
   };
 
+  // Header Component containing Title + Stats Grid
+  const renderHeader = () => (
+    <Animated.View entering={FadeInDown.duration(600)}>
+      <Text style={styles.header}>Challenges</Text>
+      <Text style={styles.subHeader}>
+        Test your knowledge with our curated collection of computational thinking problems.
+      </Text>
+
+      {/* Stats Grid */}
+      <View style={styles.statsGrid}>
+        {/* Total Card */}
+        <View style={styles.statCard}>
+          <View style={[styles.iconBox, { backgroundColor: '#E0F2FE' }]}>
+            <Ionicons name="trophy" size={24} color="#0284C7" />
+          </View>
+          <View>
+            <Text style={styles.statNumber}>{totalChallenges}</Text>
+            <Text style={styles.statLabel}>Total Exercises</Text>
+          </View>
+        </View>
+
+        {/* Easy Card */}
+        <View style={styles.statCard}>
+          <View style={[styles.iconBox, { backgroundColor: '#DCFCE7' }]}>
+            <Ionicons name="radio-button-on" size={24} color={Colors.easy} />
+          </View>
+          <View>
+            <Text style={styles.statNumber}>{easyCount}</Text>
+            <Text style={styles.statLabel}>Easy</Text>
+          </View>
+        </View>
+
+        {/* Medium Card */}
+        <View style={styles.statCard}>
+          <View style={[styles.iconBox, { backgroundColor: '#FEF3C7' }]}>
+            <Ionicons name="bulb" size={24} color="#D97706" />
+          </View>
+          <View>
+            <Text style={styles.statNumber}>{mediumCount}</Text>
+            <Text style={styles.statLabel}>Medium</Text>
+          </View>
+        </View>
+
+        {/* Hard Card */}
+        <View style={styles.statCard}>
+          <View style={[styles.iconBox, { backgroundColor: '#FEE2E2' }]}>
+            <Ionicons name="code-slash" size={24} color={Colors.hard} />
+          </View>
+          <View>
+            <Text style={styles.statNumber}>{hardCount}</Text>
+            <Text style={styles.statLabel}>Hard</Text>
+          </View>
+        </View>
+      </View>
+
+      <Text style={styles.sectionTitle}>All Challenges</Text>
+    </Animated.View>
+  );
+
   return (
     <View style={styles.container}>
-      <Animated.View entering={FadeInDown.duration(600)}>
-        <Text style={styles.header}>Challenges</Text>
-      </Animated.View>
       <FlatList
         data={challenges}
+        ListHeaderComponent={renderHeader}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: Spacing.xl }}
+        showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         renderItem={({ item, index }) => {
           const isCompleted = completedIds.includes(item.id);
@@ -146,15 +227,67 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-    padding: Spacing.xl,
+    paddingHorizontal: Spacing.xl,
     paddingTop: Spacing['5xl'],
   },
   header: {
     fontSize: Typography.fontSize['4xl'],
     fontWeight: Typography.fontWeight.extrabold,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.xs,
     color: Colors.text,
   },
+  subHeader: {
+    fontSize: Typography.fontSize.base,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.lg,
+    lineHeight: 22,
+  },
+  
+  // Stats Grid Styles
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.md,
+    marginBottom: Spacing.xl,
+  },
+  statCard: {
+    width: '47%', // Roughly half width minus gap
+    backgroundColor: Colors.card,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
+  },
+  iconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: Typography.fontSize.xl,
+    fontWeight: Typography.fontWeight.bold,
+    color: Colors.text,
+  },
+  statLabel: {
+    fontSize: Typography.fontSize.xs,
+    color: Colors.textSecondary,
+    fontWeight: Typography.fontWeight.medium,
+  },
+
+  sectionTitle: {
+    fontSize: Typography.fontSize.xl,
+    fontWeight: Typography.fontWeight.bold,
+    color: Colors.text,
+    marginBottom: Spacing.md,
+  },
+
+  // Existing Card Styles
   cardContainer: {
     marginBottom: Spacing.base,
   },
