@@ -2,30 +2,190 @@
 
 **LogicLab Mobile** is an interactive learning application designed specifically for **ITB (Institut Teknologi Bandung)** students. It helps students master Computational Thinking, Algorithms, and Data Structures through a series of gamified challenges and quizzes.
 
-The app features secure authentication restricted to ITB student emails, real-time progress tracking, and a comprehensive dashboard to monitor learning milestones.
+The app features secure authentication (restricted to ITB student emails), real-time progress tracking, and a comprehensive dashboard to monitor learning milestones.
+
+---
 
 ## ✨ Features
 
-*   **🔐 Institutional Auth:** Secure login using Google Sign-In, restricted to `@std.stei.itb.ac.id` domains.
-*   **📚 Interactive Challenges:** A curated list of quizzes covering Fundamentals, Algorithms, Recursion, Data Structures, and more.
-*   **📊 Student Dashboard:** Real-time tracking of total scores, completed challenges, and average performance.
-*   **⚡ Instant Feedback:** Immediate explanations for correct and incorrect answers during quizzes.
-*   **🎨 Smooth UI/UX:** Animated splash screens, intuitive navigation, and responsive design.
+### 1. 🔐 Secure Authentication
+*   **Institutional Login**: Secure login using Google Sign-In, designed for `@std.stei.itb.ac.id` domains.
+*   **Session Persistence**: Users remain logged in across app restarts using `AsyncStorage`.
+*   **Auto-Refresh**: Supabase tokens are automatically refreshed in the background.
+
+### 2. 📚 Interactive Challenges
+*   **Gamified Quizzes**: Multiple-choice questions covering Fundamentals, Recursion, and Data Structures.
+*   **Immediate Feedback**: Instant validation of answers with detailed explanations.
+*   **Review Mode**: After completing a challenge, users can review their answers to understand mistakes.
+
+### 3. 📊 Student Dashboard
+*   **Progress Tracking**: Visual stats showing Total Score, Challenges Completed, and Average Score.
+*   **Difficulty Breakdown**: Statistics separated by Easy, Medium, and Hard difficulty levels.
+
+### 4. 🎨 Modern UI/UX
+*   **Animated Splash Screen**: Custom entry animation using `react-native-reanimated`.
+*   **Responsive Design**: Optimized for various screen sizes.
+*   **Haptic Feedback**: Tactile responses for interactions.
+*   **Offline Handling**: Graceful error handling when network connection is lost.
+
+---
 
 ## 🛠 Tech Stack
 
-*   **Framework:** [React Native](https://reactnative.dev/) with [Expo](https://expo.dev/)
-*   **Language:** [TypeScript](https://www.typescriptlang.org/)
-*   **Routing:** [Expo Router](https://docs.expo.dev/router/introduction/) (File-based routing)
-*   **Backend & Database:** [Supabase](https://supabase.com/) (PostgreSQL)
-*   **Authentication:** Supabase Auth + Google Cloud OAuth
-*   **Animations:** [React Native Reanimated](https://docs.swmansion.com/react-native-reanimated/)
-*   **Icons:** Ionicons (@expo/vector-icons)
+*   **Framework**: [React Native](https://reactnative.dev/) (0.81.5) with [Expo](https://expo.dev/) (SDK 52)
+*   **Language**: [TypeScript](https://www.typescriptlang.org/)
+*   **Routing**: [Expo Router](https://docs.expo.dev/router/introduction/) (File-based routing)
+*   **Backend**: [Supabase](https://supabase.com/) (PostgreSQL + Auth)
+*   **State Management**: React Context (AuthContext)
+*   **Animations**: [React Native Reanimated](https://docs.swmansion.com/react-native-reanimated/)
+*   **Storage**: `@react-native-async-storage/async-storage`
+*   **Build Tool**: EAS (Expo Application Services)
+
+---
+
+## 📂 Project Structure
+
+```
+logiclab-mobile-testing/
+├── app/                 # Expo Router pages
+│   ├── (tabs)/          # Main tab navigation (Home, Challenges, Dashboard)
+│   ├── quiz/            # Dynamic quiz routes ([id].tsx)
+│   ├── _layout.tsx      # Root layout & Auth Guard
+│   └── login.tsx        # Login screen
+├── components/          # Reusable UI components (AnimatedSplash, etc.)
+├── ctx/                 # React Contexts (AuthContext.tsx)
+├── data/                # Static data (challenges.ts, faculties.ts)
+├── lib/                 # Configuration (supabase.ts, theme.ts)
+└── assets/              # Images and fonts
+```
+
+---
+
+## ☁️ Backend & Security (Supabase)
+
+We use **Supabase** as a Backend-as-a-Service (BaaS). It provides the PostgreSQL database and Authentication services.
+
+### Database Schema
+
+The core of our progress tracking is the `user_progress` table.
+
+```sql
+-- 1. Table for storing user progress
+create table public.user_progress (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users not null,
+  challenge_id text not null, -- ID from JSON challenge (e.g., '1', '2')
+  score int not null default 0,
+  total_points int not null default 0,
+  completed_at timestamp with time zone default timezone('utc'::text, now()),
+  
+  -- Ensure one record per challenge per user
+  unique(user_id, challenge_id)
+);
+
+-- 2. Enable RLS (Row Level Security)
+alter table public.user_progress enable row level security;
+
+-- 3. Policies
+-- User can ONLY view their own data
+create policy "User can view own progress" on public.user_progress
+  for select using (auth.uid() = user_id);
+
+-- User can ONLY insert their own data
+create policy "User can insert own progress" on public.user_progress
+  for insert with check (auth.uid() = user_id);
+
+-- User can ONLY update their own data
+create policy "User can update own progress" on public.user_progress
+  for update using (auth.uid() = user_id);
+```
+
+### 🔐 Why is the API Key in the code?
+
+You might notice the `supabaseAnonKey` is hardcoded in `lib/supabase.ts`. **This is intentional and safe.**
+
+*   **Row Level Security (RLS)**: The `anon` key is a public key. It allows connection to the database, but it **does not** grant permission to read or write data.
+*   **Policy Enforcement**: Access is controlled entirely by the Postgres RLS policies shown above. Even with the key, a user cannot read another user's data because the database checks `auth.uid() = user_id` for every request.
+*   **Environment Variables**: While we could use `.env`, in a mobile app, these keys are eventually bundled into the binary anyway. Relying on RLS is the correct security model for Supabase client-side apps.
+
+---
+
+## 🔑 Authentication & Google Cloud Setup
+
+The app uses **Google OAuth** via `@react-native-google-signin/google-signin`. This requires careful configuration across Google Cloud Console and Supabase.
+
+### The 3 Client IDs
+To support all platforms, we need three distinct Client IDs in Google Cloud Console:
+
+1.  **Web Client ID**:
+    *   Used by Supabase to verify the ID token sent from the app.
+    *   Added to Supabase Dashboard > Authentication > Providers > Google.
+2.  **Android Client ID**:
+    *   Used by the Android app to request consent from the user.
+    *   Requires the **SHA-1 Fingerprint** of the keystore used to sign the app (Development or Production keystore).
+3.  **iOS Client ID**:
+    *   Used by the iOS app.
+    *   Requires the Bundle ID (e.g., `com.logiclab.mobile`).
+
+### Auth Flow
+1.  User clicks "Sign in with Google".
+2.  Native Google SDK opens the consent screen.
+3.  Google returns an `idToken`.
+4.  App sends this `idToken` to Supabase (`supabase.auth.signInWithIdToken`).
+5.  Supabase verifies the token with Google (using the Web Client ID) and creates a session.
+
+---
+
+## 🏗️ Build & Development (EAS)
+
+We use **EAS Build** because our app includes native code (Google Sign-In) that cannot run in the standard "Expo Go" app from the App Store.
+
+### Development Build
+A "Development Build" is a custom version of the Expo Go app that includes our specific native libraries.
+
+1.  **Configure**: `eas.json` defines the build profile.
+    ```json
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    }
+    ```
+2.  **Build**:
+    ```bash
+    eas build --profile development --platform android
+    ```
+3.  **Install**: Download the `.apk` to your device or emulator.
+4.  **Run**: Start the metro bundler with `npx expo start --dev-client`.
+
+### Production Build
+For releasing to the Play Store or App Store.
+
+1.  **Android (Play Store)**:
+    ```bash
+    eas build --profile production --platform android
+    ```
+    *Generates an `.aab` file to upload to the Google Play Console.*
+2.  **iOS (App Store)**:
+    ```bash
+    eas build --profile production --platform ios
+    ```
+    *Generates an .ipa file to upload to App Store Connect (requires an Apple Developer Account).*
+
+### Preview Build
+For testing a production-like build (APK) without submitting to the store:
+```bash
+eas build --profile preview --platform android
+```
+
+### Keystore Management
+*   **Development**: Uses a debug keystore. The SHA-1 of this keystore MUST be added to Google Cloud Console for Google Sign-In to work during development.
+*   **Production**: Uses a secure production keystore managed by EAS. This SHA-1 must also be added to Google Cloud Console.
+
+---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-
 *   [Node.js](https://nodejs.org/) (LTS version recommended)
 *   [Git](https://git-scm.com/)
 *   **Expo Go** app on your physical device OR Android Studio/Xcode for emulators.
@@ -34,7 +194,7 @@ The app features secure authentication restricted to ITB student emails, real-ti
 
 1.  **Clone the repository**
     ```bash
-    git clone https://github.com/your-username/logiclab-mobile.git
+    git clone https://github.com/your-repo/logiclab-mobile.git
     cd logiclab-mobile
     ```
 
@@ -42,82 +202,15 @@ The app features secure authentication restricted to ITB student emails, real-ti
     ```bash
     npm install
     ```
-    *Note: This project uses native libraries like `@react-native-google-signin/google-signin`. You may need to use a Development Build instead of standard Expo Go.*
 
-## ⚙️ Configuration
+3.  **Run the project**
+    *   If you have the Development Build installed:
+        ```bash
+        npx expo start --dev-client
+        ```
+    *   Press `a` to open on Android.
 
-To make the app work, you need to set up your own backend services.
-
-### 1. Supabase Setup
-
-1.  Create a new project at [Supabase.com](https://supabase.com).
-2.  Go to **SQL Editor** and run the following query to set up the progress tracking table:
-    ```sql
-    create table public.user_progress (
-      id uuid default gen_random_uuid() primary key,
-      user_id uuid references auth.users not null,
-      challenge_id text not null,
-      score int not null default 0,
-      total_points int not null default 0,
-      completed_at timestamp with time zone default timezone('utc'::text, now()),
-      unique(user_id, challenge_id)
-    );
-
-    alter table public.user_progress enable row level security;
-
-    create policy "User can view own progress" on public.user_progress for select using (auth.uid() = user_id);
-    create policy "User can insert own progress" on public.user_progress for insert with check (auth.uid() = user_id);
-    create policy "User can update own progress" on public.user_progress for update using (auth.uid() = user_id);
-    ```
-3.  Go to **Authentication > Providers > Google** and enable it. You will need Client IDs from step 2.
-
-### 2. Google Cloud Console Setup
-
-1.  Go to [Google Cloud Console](https://console.cloud.google.com/).
-2.  Create a new project and configure the **OAuth Consent Screen**.
-3.  Create Credentials:
-    *   **Web Client ID:** Used for Supabase.
-    *   **Android Client ID:** Used for the mobile app.
-    *   **iOS Client ID:** Used for the mobile app.
-4.  Copy these Client IDs.
-
-### 3. Environment Variables Setup
-
-**IMPORTANT:** Never commit your `.env` file to version control!
-
-1.  **Copy the example environment file:**
-    ```bash
-    cp .env.example .env
-    ```
-
-2.  **Edit `.env` and add your Supabase credentials:**
-    ```
-    EXPO_PUBLIC_SUPABASE_URL=your_supabase_url_here
-    EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
-    ```
-    
-3.  Get these values from your [Supabase Dashboard](https://app.supabase.com) → Project Settings → API
-
-The `lib/supabase.ts` file will automatically read these environment variables. Never hardcode credentials in your source code!
-
-## 📱 Running the App
-Since this app uses Native Google Sign-In, it is recommended to run it using a Development Build.
-
-1. Build the Development Client (Android)
-
-```bash
-eas build --profile development --platform android
-```
-
-Install the resulting APK on your device.
-
-2. Start the Development Server
-
-```bash
-npx expo start --dev-client
-```
-
-3. Scan the QR code with your device to connect.
+---
 
 ## 🧪 Testing
 
@@ -142,49 +235,17 @@ npm run test:coverage
 - See `__tests__/example.test.tsx` for examples
 - Mock Supabase and Expo modules as shown in `jest.setup.js`
 
-For more testing guidelines, see [CONTRIBUTING.md](./CONTRIBUTING.md).
+---
 
-## 🏗️ Building for Production
+## 📱 Splash Screen Implementation
 
-### Using EAS Build
+We use a custom `AnimatedSplash` component instead of the static Expo splash screen for a richer experience.
 
-```bash
-# Install EAS CLI (if not installed)
-npm install -g eas-cli
+*   **Logic**: Located in `app/_layout.tsx`.
+*   **Behavior**: The app checks if `session` is loading. While loading, it shows `AnimatedSplash`.
+*   **Animation**: Uses `react-native-reanimated` to fade in the logo, scale it up, and then fade out before revealing the app content.
 
-# Login to your Expo account
-eas login
-
-# Build for Android (AAB for Play Store)
-eas build --profile production --platform android
-
-# Build for iOS
-eas build --profile production --platform ios
-```
-
-**Note:** Production builds for Android now use AAB (App Bundle) format, which is required for Google Play Store submission.
-
-For preview/testing builds (APK format):
-```bash
-eas build --profile preview --platform android
-```
-
-## 📂 Project Structure
-
-```bash
-logiclab-mobile/
-├── app/                    # Expo Router pages
-│   ├── (tabs)/             # Main tab navigation (Home, Challenges, Dashboard)
-│   ├── quiz/               # Quiz interface (Hidden from tabs)
-│   ├── _layout.tsx         # Root layout & Auth Guard logic
-│   ├── index.tsx           # Landing page
-│   └── login.tsx           # Login page
-├── components/             # Reusable UI components (AnimatedSplash, etc.)
-├── data/                   # Static data (Challenges JSON)
-├── ctx/                    # React Context (AuthContext)
-├── lib/                    # Configuration (Supabase client)
-└── assets/                 # Images and fonts
-```
+---
 
 ## 🤝 Contributing
 
@@ -194,9 +255,13 @@ We welcome contributions! Please see our [Contributing Guidelines](./CONTRIBUTIN
 - Testing requirements
 - Pull request process
 
+---
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+
+---
 
 ## 🙏 Acknowledgments
 

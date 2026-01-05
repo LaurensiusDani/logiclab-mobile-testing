@@ -10,7 +10,7 @@ Thank you for your interest in contributing to LogicLab Mobile Testing! This doc
 - npm or yarn
 - Expo CLI (`npm install -g expo-cli`)
 - EAS CLI (`npm install -g eas-cli`)
-- iOS Simulator (macOS only) or Android Emulator
+- **Android Emulator** or **iOS Simulator** (Physical devices work too, but require installing the Development Build)
 
 ### Development Setup
 
@@ -25,30 +25,33 @@ Thank you for your interest in contributing to LogicLab Mobile Testing! This doc
    npm install
    ```
 
-3. **Set up environment variables**
-   - Copy `.env.example` to `.env`:
-     ```bash
-     cp .env.example .env
-     ```
-   - Fill in your Supabase credentials in `.env`:
-     ```
-     EXPO_PUBLIC_SUPABASE_URL=your_supabase_project_url
-     EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-     ```
-   - Get these values from your [Supabase Dashboard](https://app.supabase.com) → Project Settings → API
-
-4. **Start the development server**
-   ```bash
-   npm start
-   ```
+3. **Configuration (Optional)**
+   The project is pre-configured with a development Supabase instance in `lib/supabase.ts`. You can start coding immediately!
+   
+   *If you wish to use your own Supabase backend:*
+   - Create a project at [Supabase.com](https://supabase.com)
+   - Update `lib/supabase.ts` with your `supabaseUrl` and `supabaseAnonKey`.
 
 ## Development Workflow
 
-### Running the App
+### ⚠️ Important: Development Build Required
+This app uses **Native Google Sign-In**, which does not work in the standard "Expo Go" app available on the App Store. You must use a **Development Build**.
 
-- **iOS Simulator**: Press `i` in the Expo CLI or run `npm run ios`
-- **Android Emulator**: Press `a` in the Expo CLI or run `npm run android`
-- **Web**: Press `w` in the Expo CLI or run `npm run web`
+1. **Build the Development Client** (One time setup)
+   ```bash
+   # For Android Emulator/Device
+   eas build --profile development --platform android
+   
+   # For iOS Simulator
+   eas build --profile development --platform ios
+   ```
+   *Download and install the resulting app on your device/emulator.*
+
+2. **Start the Development Server**
+   ```bash
+   npx expo start --dev-client
+   ```
+   *Do not use `npm start` or `npx expo start` as they default to Expo Go.*
 
 ### Testing
 
@@ -67,48 +70,26 @@ npm run test:coverage
 
 #### Writing Tests
 
-- Place test files in the `__tests__` directory or alongside your components with `.test.tsx` extension
-- Follow the existing test patterns (see `__tests__/example.test.tsx`)
-- Aim for meaningful test coverage, not just high percentages
-- Mock external dependencies appropriately
+- Place test files in the `__tests__` directory.
+- Follow the existing test patterns (see `__tests__/example.test.tsx`).
+- Mock external dependencies (like Supabase) appropriately.
 
 ### Code Style
 
-- We use ESLint with `eslint-config-expo` for code quality
-- Run linting with: `npm run lint`
-- TypeScript strict mode is enabled - ensure your code is properly typed
-- Follow React Native and Expo best practices
+- We use ESLint with `eslint-config-expo`.
+- Run linting: `npm run lint`.
+- **TypeScript**: Ensure strict typing is maintained. Avoid `any` whenever possible.
 
-### Building
+### Building for Production
 
-#### Development Builds
-
-```bash
-# iOS development build
-eas build --profile development --platform ios
-
-# Android development build
-eas build --profile development --platform android
-```
-
-#### Preview Builds
+When you are ready to release:
 
 ```bash
-# iOS preview build
-eas build --profile preview --platform ios
-
-# Android preview build (APK)
-eas build --profile preview --platform android
-```
-
-#### Production Builds
-
-```bash
-# iOS production build
-eas build --profile production --platform ios
-
-# Android production build (AAB for Play Store)
+# Android (AAB for Play Store)
 eas build --profile production --platform android
+
+# iOS (IPA for App Store)
+eas build --profile production --platform ios
 ```
 
 ## Pull Request Process
@@ -119,82 +100,51 @@ eas build --profile production --platform android
    ```
 
 2. **Make your changes**
-   - Write clean, readable code
-   - Add tests for new functionality
-   - Update documentation as needed
+   - Write clean, readable code.
+   - Add tests for new functionality.
+   - Update documentation if you change how things work.
 
-3. **Test your changes**
+3. **Verify**
    ```bash
    npm test
    npm run lint
    ```
 
-4. **Commit your changes**
-   - Use clear, descriptive commit messages
-   - Follow conventional commits format:
+4. **Commit**
+   - Use [Conventional Commits](https://www.conventionalcommits.org/):
      ```
-     feat: add new feature
-     fix: resolve bug in component
-     docs: update README
-     test: add tests for feature
-     chore: update dependencies
+     feat: add review mode to quiz
+     fix: resolve crash on offline mode
+     docs: update contributing guidelines
+     style: adjust padding on home screen
      ```
 
-5. **Push to your fork and submit a pull request**
+5. **Push and PR**
    ```bash
    git push origin feature/your-feature-name
    ```
-
-6. **Pull Request Guidelines**
-   - Provide a clear description of the changes
-   - Reference any related issues
-   - Ensure all tests pass
-   - Update documentation if needed
-   - Request review from maintainers
 
 ## Project Structure
 
 ```
 logiclab-mobile-testing/
-├── app/                    # Expo Router pages
-│   ├── (tabs)/            # Tab navigation screens
-│   ├── _layout.tsx        # Root layout
-│   └── index.tsx          # Home screen
-├── components/            # Reusable React components
-├── ctx/                   # React contexts
-├── data/                  # Static data and constants
-├── lib/                   # Utilities and configurations
-│   └── supabase.ts       # Supabase client setup
-├── __tests__/            # Test files
-├── assets/               # Images, fonts, and other static assets
-├── .env                  # Environment variables (not committed)
-├── .env.example          # Environment variables template
-├── app.json              # Expo configuration
-├── eas.json              # EAS Build configuration
-└── package.json          # Dependencies and scripts
+├── app/                 # Expo Router pages
+│   ├── (tabs)/          # Main tab navigation
+│   ├── quiz/            # Quiz screens
+│   ├── _layout.tsx      # Root layout & Auth Guard
+│   └── login.tsx        # Login screen
+├── components/          # Reusable UI components
+├── ctx/                 # React Contexts (Auth)
+├── data/                # Static data (Challenges, Faculties)
+├── lib/                 # Configuration (Supabase, Theme)
+├── __tests__/           # Unit & Integration tests
+└── assets/              # Images and fonts
 ```
-
-## Environment Variables
-
-Required environment variables:
-
-- `EXPO_PUBLIC_SUPABASE_URL`: Your Supabase project URL
-- `EXPO_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anonymous key
-
-**Important**: Never commit `.env` files to version control. Always use `.env.example` as a template.
 
 ## Need Help?
 
-- Check existing issues and pull requests
 - Review the [Expo documentation](https://docs.expo.dev/)
 - Review the [Supabase documentation](https://supabase.com/docs)
-- Ask questions in discussions or create a new issue
-
-## Code of Conduct
-
-- Be respectful and inclusive
-- Provide constructive feedback
-- Focus on what is best for the community
-- Show empathy towards other community members
+- Check `README.md` for architecture details.
 
 Thank you for contributing! 🎉
