@@ -1,4 +1,4 @@
-import { Alert, View, Text, StyleSheet } from "react-native";
+import { Alert, View, Text, StyleSheet, Platform, TouchableOpacity } from "react-native";
 import {
   GoogleSignin,
   GoogleSigninButton,
@@ -9,57 +9,60 @@ import { supabase } from '../lib/supabase';
 import { Colors, Typography, Spacing, BorderRadius } from '../lib/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { Ionicons } from "@expo/vector-icons";
 
-GoogleSignin.configure({
-  "webClientId": "424039843806-qo0tn5t4hqqktlsr3tucq34jo9a0rghs.apps.googleusercontent.com",
-  "iosClientId": "424039843806-71gaim4tsm3g7pf93jmjahsb2rjai2q9.apps.googleusercontent.com"
-});
+// Konfigurasi Google Signin HANYA jika bukan Web
+if (Platform.OS !== 'web') {
+  GoogleSignin.configure({
+    "webClientId": "424039843806-qo0tn5t4hqqktlsr3tucq34jo9a0rghs.apps.googleusercontent.com",
+    "iosClientId": "424039843806-71gaim4tsm3g7pf93jmjahsb2rjai2q9.apps.googleusercontent.com"
+  });
+}
 
 export default function LoginScreen() {
 
-  const handleGoogleSignIn = async () => {
+  // 1. Logic Login untuk Android/iOS (Native)
+  const handleNativeGoogleSignIn = async () => {
     try {
       await GoogleSignin.hasPlayServices();
       const response = await GoogleSignin.signIn();
 
       if (isSuccessResponse(response)) {
-        // HERE IS THE MAGIC: Exchange Google Token for Supabase Session
         const { data, error } = await supabase.auth.signInWithIdToken({
           provider: 'google',
-          token: response.data.idToken!, // The ID token from Google
+          token: response.data.idToken!,
         });
 
-        if (error) {
-          Alert.alert("Supabase Error", error.message);
-        } else {
-          // Success! The AuthContext in _layout.tsx will detect the session change
-          // and automatically redirect the user to the Dashboard.
-          console.log("Supabase Login Success:", data.session?.user.email);
-        }
+        if (error) Alert.alert("Supabase Error", error.message);
       }
     } catch (error: any) {
-      // Cek kode error spesifik dari Google
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        // User membatalkan login (klik tombol back atau tutup popup)
-        // Biasanya tidak perlu alert, atau cukup console.log saja
         console.log("Login dibatalkan user");
-      }
-      else if (error.code === statusCodes.IN_PROGRESS) {
+      } else if (error.code === statusCodes.IN_PROGRESS) {
         Alert.alert("Sabar ya", "Proses login sedang berjalan...");
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        Alert.alert("Error", "Google Play Services tidak tersedia.");
+      } else {
+        console.log("Google Error:", error);
+        Alert.alert("Gagal Masuk", "Pastikan email sesuai.");
       }
-      else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        Alert.alert("Error", "Google Play Services tidak tersedia atau perlu diupdate.");
-      }
-      else {
-        // Ini biasanya error kalau email tidak diizinkan (Restricted Domain)
-        // atau konfigurasi SHA-1 salah.
-        console.log("Google Error:", error); // Tetap log untuk debugging kita
+    }
+  };
 
-        Alert.alert(
-          "Gagal Masuk",
-          "Pastikan kamu menggunakan email mahasiswa ITB (@std.stei.itb.ac.id) dan koneksi internet lancar."
-        );
-      }
+  // 2. Logic Login untuk Web
+  const handleWebGoogleSignIn = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          // Ganti URL ini dengan URL lokal kamu saat dev, misal localhost:8081
+          redirectTo: window.location.origin, 
+        },
+      });
+      if (error) throw error;
+      // Di web, dia akan redirect ke halaman Google, lalu balik lagi ke app
+    } catch (error: any) {
+      Alert.alert("Error", error.message);
     }
   };
 
@@ -89,12 +92,25 @@ export default function LoginScreen() {
         </Text>
 
         <View style={styles.buttonContainer}>
-          <GoogleSigninButton
-            size={GoogleSigninButton.Size.Wide}
-            color={GoogleSigninButton.Color.Light}
-            onPress={handleGoogleSignIn}
-            style={styles.googleButton}
-          />
+          {Platform.OS === 'web' ? (
+            // TAMPILAN KHUSUS WEB (Custom Button)
+            <TouchableOpacity 
+              style={styles.webGoogleButton} 
+              onPress={handleWebGoogleSignIn}
+            >
+              <Ionicons name="logo-google" size={20} color="black" style={{ marginRight: 10 }} />
+              <Text style={styles.webGoogleButtonText}>Sign in with Google</Text>
+            </TouchableOpacity>
+          ) : (
+            // TAMPILAN KHUSUS NATIVE (Google Button Asli)
+            <GoogleSigninButton
+              size={GoogleSigninButton.Size.Wide}
+              color={GoogleSigninButton.Color.Light}
+              onPress={handleNativeGoogleSignIn}
+              style={styles.googleButton}
+            />
+          )}
+          
           <Text style={styles.helperText}>
             Sign in with your ITB student email
           </Text>
@@ -165,6 +181,26 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: BorderRadius.md,
     overflow: 'hidden',
+  },
+  // Style baru untuk tombol Web
+  webGoogleButton: {
+    width: 250,
+    height: 52,
+    backgroundColor: 'white',
+    borderRadius: BorderRadius.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  webGoogleButtonText: {
+    color: 'black',
+    fontWeight: '600',
+    fontSize: 16,
   },
   helperText: {
     marginTop: Spacing.base,

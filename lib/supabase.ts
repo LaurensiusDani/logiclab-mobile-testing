@@ -1,4 +1,4 @@
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -9,18 +9,22 @@ const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: AsyncStorage, // Switched to AsyncStorage to avoid 2048 byte limit
+    // MAGIC FIX: Kalau Web, biarkan undefined (Supabase otomatis pakai localStorage).
+    // Kalau Native (Android/iOS), baru pakai AsyncStorage.
+    storage: Platform.OS === 'web' ? undefined : AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    detectSessionInUrl: Platform.OS === 'web', // Di Web kita butuh ini true biar redirect jalan
   },
 });
 
-// 2. App State Listener (Refreshes token when app comes to foreground)
-AppState.addEventListener('change', (state) => {
-  if (state === 'active') {
-    supabase.auth.startAutoRefresh();
-  } else {
-    supabase.auth.stopAutoRefresh();
-  }
-});
+// 2. App State Listener (Hanya jalan di Native)
+if (Platform.OS !== 'web') {
+  AppState.addEventListener('change', (state) => {
+    if (state === 'active') {
+      supabase.auth.startAutoRefresh();
+    } else {
+      supabase.auth.stopAutoRefresh();
+    }
+  });
+}
