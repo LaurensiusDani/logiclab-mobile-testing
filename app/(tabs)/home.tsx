@@ -154,7 +154,7 @@ export default function Home() {
           <View style={styles.footerHeader}>
             <Ionicons name="school-outline" size={28} color={Colors.white} />
             <View style={{ alignItems: 'center' }}>
-              <Text style={styles.footerTitle}>Virtual Lab: Computational Thinking</Text>
+              <Text style={styles.footerTitle}>Logic Lab: Computational Thinking</Text>
               <Text style={styles.footerTitle}>ITB</Text>
             </View>
           </View>
